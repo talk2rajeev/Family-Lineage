@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+/* Custom font variable */
+:root {
+  --font-inter: 'Inter', system-ui, sans-serif;
+}
+
+/* Use Inter globally */
+body {
+  font-family: var(--font-inter);
+}
+
+/* ─── React Flow resets ───────────────────────────────────────────── */
+
+/* Remove React Flow's default node wrapper styles so our custom node
+   card takes full visual control */
+.react-flow__node {
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Prevent default selected outline — our component handles it */
+.react-flow__node.selected > div {
+  /* handled inside FamilyNode.tsx via `selected` prop */
+}
+
+/* Edge stroke widths */
+.react-flow__edge path {
+  stroke-width: 2;
+}
+
+/* ─── Custom scrollbar ───────────────────────────────────────────── */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 9999px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+/* ─── Node hover lift animation ─────────────────────────────────── */
+@keyframes node-lift {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-2px); }
+}
+
+/* ─── Controls & MiniMap rounding ─────────────────────────────── */
+.react-flow__controls {
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05) !important;
+}
+
+.react-flow__minimap {
+  border-radius: 12px !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05) !important;
+  overflow: hidden !important;
+}
+
+/* ─── Attribution (hidden via proOptions) ──────────────────────── */
+.react-flow__attribution {
+  display: none !important;
+}
