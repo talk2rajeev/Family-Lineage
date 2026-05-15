@@ -1,6 +1,37 @@
 import { FamilyTree } from '@/types/family';
 
 export const sampleTrees: Record<string, FamilyTree> = {
+  bachchan: {
+    id: 'bachchan',
+    name: 'Bachchan Family Tree',
+    ownerId: 'demo',
+    isPublic: true,
+    nodes: [
+      { id: 'harivansh', name: 'Harivansh Rai Bachchan', gender: 'M', position: { x: 0, y: 0 } },
+      { id: 'teji', name: 'Teji Bachchan', gender: 'F', isSpouse: true, spouseOf: 'harivansh', position: { x: 0, y: 0 } },
+      { id: 'shyama', name: 'Shyama Bachchan', gender: 'F', isSpouse: true, spouseOf: 'harivansh', position: { x: 0, y: 0 } },
+      { id: 'amitabh', name: 'Amitabh Bachchan', gender: 'M', position: { x: 0, y: 0 } },
+      { id: 'ajitabh', name: 'Ajitabh Bachchan', gender: 'M', position: { x: 0, y: 0 } },
+      { id: 'jaya', name: 'Jaya Bachchan', gender: 'F', isSpouse: true, spouseOf: 'amitabh', position: { x: 0, y: 0 } },
+      { id: 'ramola', name: 'Ramola Bachchan', gender: 'F', isSpouse: true, spouseOf: 'ajitabh', position: { x: 0, y: 0 } },
+      { id: 'abhishek', name: 'Abhishek Bachchan', gender: 'M', position: { x: 0, y: 0 } },
+      { id: 'nilima', name: 'Nilima Bachchan', gender: 'F', position: { x: 0, y: 0 } },
+      { id: 'aishwarya', name: 'Aishwarya Rai Bachchan', gender: 'F', isSpouse: true, spouseOf: 'abhishek', position: { x: 0, y: 0 } },
+      { id: 'aradhya', name: 'Aradhya Bachchan', gender: 'F', position: { x: 0, y: 0 } },
+    ],
+    edges: [
+      { id: 's_hari_teji', source: 'harivansh', target: 'teji', type: 'spouse' },
+      { id: 's_hari_shyama', source: 'harivansh', target: 'shyama', type: 'spouse' },
+      { id: 'e_hari_amitabh', source: 'harivansh', target: 'amitabh', type: 'parent-child' },
+      { id: 'e_hari_ajitabh', source: 'harivansh', target: 'ajitabh', type: 'parent-child' },
+      { id: 's_amitabh_jaya', source: 'amitabh', target: 'jaya', type: 'spouse' },
+      { id: 's_ajitabh_ramola', source: 'ajitabh', target: 'ramola', type: 'spouse' },
+      { id: 'e_amitabh_abhishek', source: 'amitabh', target: 'abhishek', type: 'parent-child' },
+      { id: 'e_ajitabh_nilima', source: 'ajitabh', target: 'nilima', type: 'parent-child' },
+      { id: 's_abhishek_aish', source: 'abhishek', target: 'aishwarya', type: 'spouse' },
+      { id: 'e_abhishek_aradhya', source: 'abhishek', target: 'aradhya', type: 'parent-child' },
+    ],
+  },
   sharma: {
     id: 'sharma',
     name: "Sharma Family Tree",

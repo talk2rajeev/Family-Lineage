@@ -2,8 +2,7 @@
 
 export default function Legend() {
   return (
-    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-      <div className="flex items-center gap-4 bg-white/80 backdrop-blur-md border border-slate-200/80 shadow-sm rounded-2xl px-5 py-2.5">
+    <div className="flex max-w-[min(100%,calc(100vw-240px))] items-center gap-4 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white/80 px-5 py-2.5 shadow-sm backdrop-blur-md">
         {/* Node types */}
         <div className="flex items-center gap-1.5">
           <div className="w-3.5 h-3.5 rounded-sm bg-indigo-100 border-[1.5px] border-indigo-400 flex-shrink-0" />
@@ -36,6 +35,5 @@ export default function Legend() {
           <span className="text-[11px] font-medium text-slate-500 whitespace-nowrap">Marriage link</span>
         </div>
       </div>
-    </div>
   );
 }

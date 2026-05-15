@@ -6,7 +6,11 @@ import { FamilyNode as FamilyNodeData } from '@/types/family';
 import { Heart, Skull, Plus, Minus } from 'lucide-react';
 
 type FamilyNodeProps = NodeProps & {
-  data: FamilyNodeData & { isCollapsed?: boolean; hasChildren?: boolean };
+  data: FamilyNodeData & {
+    isCollapsed?: boolean;
+    hasChildren?: boolean;
+    onToggleChildren?: () => void;
+  };
 };
 
 function getInitials(name: string): string {
@@ -49,48 +53,57 @@ function FamilyNode({ data, selected }: FamilyNodeProps) {
   return (
     <div
       className={`
-        family-node
-        relative group
-        min-w-[170px] max-w-[200px]
-        rounded-xl
-        border-[1.5px]
+        family-node group flex min-w-[170px] max-w-[200px] flex-col
         ${hasChildren ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'}
-        transition-all duration-200
-        hover:-translate-y-0.5
-        ${selected ? 'ring-2 ring-offset-2' : ''}
-        ${isDeceased
-          ? 'bg-slate-50 border-slate-300 shadow-slate-100 hover:shadow-slate-200 shadow-sm hover:shadow-md ' + (selected ? 'ring-slate-400' : '')
-          : 'bg-white border-indigo-400 shadow-indigo-100 hover:shadow-indigo-200 shadow-sm hover:shadow-md ' + (selected ? 'ring-indigo-400' : '')
-        }
       `}
     >
-      {/* Deceased overlay */}
-      {isDeceased && (
-        <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-500 flex items-center justify-center shadow-sm z-10">
-          <Skull className="w-2.5 h-2.5 text-white" />
-        </div>
-      )}
+      <div
+        className={`
+          relative
+          rounded-xl
+          border-[1.5px]
+          transition-all duration-200
+          hover:-translate-y-0.5
+          ${selected ? 'ring-2 ring-offset-2' : ''}
+          ${isDeceased
+            ? 'bg-slate-50 border-slate-300 shadow-slate-100 hover:shadow-slate-200 shadow-sm hover:shadow-md ' + (selected ? 'ring-slate-400' : '')
+            : 'bg-white border-indigo-400 shadow-indigo-100 hover:shadow-indigo-200 shadow-sm hover:shadow-md ' + (selected ? 'ring-indigo-400' : '')
+          }
+        `}
+      >
+        {/* Deceased overlay */}
+        {isDeceased && (
+          <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-500 flex items-center justify-center shadow-sm z-10">
+            <Skull className="w-2.5 h-2.5 text-white" />
+          </div>
+        )}
 
-      {/* Collapse/Expand toggle indicator */}
-      {hasChildren && (
-        <div 
-          className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center shadow-sm z-10 transition-colors
-            ${isCollapsed 
-              ? 'bg-indigo-600 border-indigo-600 text-white' 
-              : 'bg-white border-indigo-400 text-indigo-500 hover:bg-indigo-50'
-            }`}
-        >
-          {isCollapsed ? <Plus className="w-2.5 h-2.5" strokeWidth={3} /> : <Minus className="w-2.5 h-2.5" strokeWidth={3} />}
-        </div>
-      )}
+        {/* Collapse/Expand toggle — centered on bottom border */}
+        {hasChildren && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              data.onToggleChildren?.();
+            }}
+            className={`absolute bottom-0 left-1/2 z-10 flex h-7 w-7 origin-center -translate-x-1/2 translate-y-1/2 items-center justify-center rounded-full border-2 shadow-sm transition-all duration-200 ease-out hover:scale-[1.11] hover:shadow-lg hover:shadow-indigo-500/35
+              ${isCollapsed
+                ? 'border-indigo-600 bg-indigo-600 text-white'
+                : 'border-indigo-400 bg-white text-indigo-500 hover:bg-indigo-50'
+              }`}
+            aria-label={isCollapsed ? 'Expand branch' : 'Collapse branch'}
+          >
+            {isCollapsed ? <Plus className="h-4 w-4" strokeWidth={2.75} /> : <Minus className="h-4 w-4" strokeWidth={2.75} />}
+          </button>
+        )}
 
-      {spouse && (
-        <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center shadow-sm z-10">
-          <Heart className="w-2.5 h-2.5 text-white" fill="white" />
-        </div>
-      )}
+        {spouse && (
+          <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center shadow-sm z-10">
+            <Heart className="w-2.5 h-2.5 text-white" fill="white" />
+          </div>
+        )}
 
-      <div className="p-2.5">
+        <div className="p-2.5">
         {/* Avatar */}
         <div className="flex items-center gap-2.5">
           <div
@@ -193,6 +206,9 @@ function FamilyNode({ data, selected }: FamilyNodeProps) {
         id="child"
         className="!w-2 !h-2 !bg-indigo-400 !border-indigo-500"
       />
+      </div>
+
+      {hasChildren ? <div className="h-[15px] w-full shrink-0" aria-hidden /> : null}
     </div>
   );
 }

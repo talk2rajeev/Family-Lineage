@@ -20,6 +20,7 @@ import '@xyflow/react/dist/style.css';
 import FamilyNode from '@/components/nodes/FamilyNode';
 import ContextMenu from '@/components/ContextMenu';
 import Legend from '@/components/Legend';
+import TreeLayoutControl from '@/components/TreeLayoutControl';
 import { ContextMenuState, FamilyNode as FamilyNodeData } from '@/types/family';
 import { RFNode, RFEdge, useFamilyStore } from '@/store/familyStore';
 
@@ -38,9 +39,18 @@ interface Props {
   rfEdges: RFEdge[];
   onExploreLineage: (familyTreeId: string) => void;
   onEditPerson: (nodeId: string) => void;
+  onSelectPerson: (nodeId: string) => void;
+  onClearSelection: () => void;
 }
 
-export default function FamilyTreeCanvas({ rfNodes, rfEdges, onExploreLineage, onEditPerson }: Props) {
+export default function FamilyTreeCanvas({
+  rfNodes,
+  rfEdges,
+  onExploreLineage,
+  onEditPerson,
+  onSelectPerson,
+  onClearSelection,
+}: Props) {
   const updateNodePosition = useFamilyStore((s) => s.updateNodePosition);
   const applyAutoLayout = useFamilyStore((s) => s.applyAutoLayout);
   const toggleCollapse = useFamilyStore((s) => s.toggleCollapse);
@@ -57,8 +67,27 @@ export default function FamilyTreeCanvas({ rfNodes, rfEdges, onExploreLineage, o
   };
 
   useEffect(() => {
-    setNodes(rfNodes.map(toRFCompatNode));
-  }, [rfNodes, setNodes]);
+    setNodes(
+      rfNodes.map((raw) => {
+        const n = toRFCompatNode(raw);
+        if (raw.type !== 'familyNode') {
+          return n;
+        }
+        const id = raw.id;
+        const base = raw.data as unknown as FamilyNodeData;
+        return {
+          ...n,
+          data: {
+            ...base,
+            onToggleChildren: () => {
+              toggleCollapse(id);
+              setTimeout(() => fitView({ duration: 500, padding: 0.15 }), 50);
+            },
+          },
+        };
+      })
+    );
+  }, [rfNodes, setNodes, toggleCollapse, fitView]);
 
   useEffect(() => {
     setEdges(rfEdges.map(toRFCompatEdge));
@@ -87,28 +116,33 @@ export default function FamilyTreeCanvas({ rfNodes, rfEdges, onExploreLineage, o
 
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
-      const nodeData = node.data as unknown as FamilyNodeData;
-
-      if (!nodeData.hasChildren) {
+      if (node.type !== 'familyNode') {
         return;
       }
-
-      toggleCollapse(node.id);
-      setTimeout(() => fitView({ duration: 500, padding: 0.15 }), 50);
+      onSelectPerson(node.id);
     },
-    [fitView, toggleCollapse]
+    [onSelectPerson]
   );
 
   const onPaneClick = useCallback(() => {
     setContextMenu(null);
-  }, []);
+    onClearSelection();
+  }, [onClearSelection]);
 
   return (
-    <div className="w-full h-full relative">
-      <Legend />
+    <div className="relative h-full w-full">
+      <div className="pointer-events-none absolute left-0 right-0 top-3 z-10 grid grid-cols-[1fr_minmax(0,auto)_1fr] items-start gap-3 px-4">
+        <div aria-hidden className="min-w-0" />
+        <div className="pointer-events-auto min-w-0 justify-self-center">
+          <Legend />
+        </div>
+        <div className="pointer-events-auto justify-self-end pr-1 pt-0.5">
+          <TreeLayoutControl />
+        </div>
+      </div>
 
       {/* Floating Action Bar */}
-      <div className="absolute left-6 top-6 z-10 flex flex-col gap-2">
+      <div className="absolute left-6 top-[4.25rem] z-10 flex flex-col gap-2">
         <button
           onClick={handleAutoLayout}
           disabled={isLayouting}
