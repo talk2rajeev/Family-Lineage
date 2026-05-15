@@ -25,7 +25,12 @@ function genderLabel(gender: FamilyNode['gender']) {
 
 function borderClass(gender: FamilyNode['gender']) {
   if (gender === 'F') return 'border-pink-300';
-  return 'border-sky-300';
+  return 'border-indigo-400';
+}
+
+function hoverEffectClass(gender: FamilyNode['gender']) {
+  if (gender === 'F') return 'hover:border-pink-400';
+  return 'hover:border-indigo-500';
 }
 
 const PLUS_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.75" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`;
@@ -296,7 +301,7 @@ export default function CleanStaticTreeCanvas({
         .append('xhtml:div')
         .attr(
           'class',
-          `rounded-[28px] border-[3px] bg-white shadow-[0_8px_22px_rgba(148,163,184,0.16)] cursor-pointer ${borderClass(d.person.node.gender)} ${
+          `rounded-[10px] border-[2px] bg-white shadow-[0_8px_22px_rgba(148,163,184,0.16)] cursor-pointer ${hoverEffectClass(d.person.node.gender)} ${borderClass(d.person.node.gender)} ${
             selectedPersonId === d.id ? 'ring-2 ring-indigo-400 ring-offset-2' : ''
           }`
         )
@@ -311,54 +316,19 @@ export default function CleanStaticTreeCanvas({
 
       const body = card
         .append('xhtml:div')
-        .attr('class', 'flex h-full flex-col items-center justify-center p-2');
+        .attr('class', 'flex h-full flex-col items-center justify-center');
 
       body
         .append('xhtml:div')
-        .attr('class', 'max-w-full text-center text-[14px] font-bold leading-tight text-slate-900')
+        .attr('class', 'max-w-full text-center text-[12px] leading-tight text-slate-900')
         .text(d.person.node.name);
 
       body
         .append('xhtml:div')
-        .attr('class', 'mt-3 text-center text-[14px] capitalize text-slate-500')
+        .attr('class', 'mt-2 text-center text-[11px] capitalize text-slate-500')
         .text(genderLabel(d.person.node.gender));
 
-      const spouseJoin = spouseJoinByNodeId.get(d.id);
-      const shouldRenderToggle = spouseJoin
-        ? spouseJoin.hasChildBranch && spouseJoin.toggleOwnerId === d.id
-        : d.person.hasChildren;
-      const toggleStateNode = spouseJoin
-        ? layoutNodeById.get(spouseJoin.toggleTargetId)
-        : d;
-
-      if (shouldRenderToggle) {
-        const toggleButton = wrapper
-          .append('xhtml:button')
-          .attr('type', 'button')
-          .attr(
-            'class',
-            `absolute z-10 flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full border-2 shadow-sm transition-all duration-200 ease-out hover:scale-[1.11] hover:shadow-lg hover:shadow-indigo-500/35 ${
-              toggleStateNode?.person.isCollapsed
-                ? 'border-indigo-600 bg-indigo-600 text-white'
-                : 'border-indigo-400 bg-white text-indigo-500 hover:bg-indigo-50'
-            }`
-          )
-          .attr('aria-label', toggleStateNode?.person.isCollapsed ? 'Expand branch' : 'Collapse branch')
-          .html(toggleStateNode?.person.isCollapsed ? PLUS_SVG : MINUS_SVG)
-          .on('click', (event: MouseEvent) => {
-            event.stopPropagation();
-            onToggleCollapse(spouseJoin?.toggleTargetId ?? d.id);
-          });
-
-        if (spouseJoin) {
-          toggleButton
-            .style('left', '50%')
-            .style('bottom', '0px');
-        } else {
-          toggleButton
-            .attr('class', `${toggleButton.attr('class')} bottom-0 left-1/2 translate-y-1/2`);
-        }
-      }
+      
     });
 
     const zoom = d3
