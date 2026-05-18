@@ -16,12 +16,6 @@ export default function DynamicTreePage() {
     selectedPersonId === null ? null : (nodes.find((n) => n.id === selectedPersonId) ?? null);
 
   useEffect(() => {
-    if (selectedPersonId !== null && !nodes.some((n) => n.id === selectedPersonId)) {
-      setSelectedPersonId(null);
-    }
-  }, [nodes, selectedPersonId]);
-
-  useEffect(() => {
     loadSampleData();
   }, [loadSampleData]);
 
