@@ -41,6 +41,9 @@ const STACKED_ICON_GAP = 5;
 const HEART_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${HEART_ICON_SIZE}" height="${HEART_ICON_SIZE}" viewBox="0 0 24 24" fill="#e11d48"><path d="M12 21s-6.716-4.35-9.193-8.155C.922 9.95 2.02 5.85 5.824 4.524c2.002-.699 4.286-.073 5.676 1.554 1.39-1.627 3.674-2.253 5.676-1.554 3.804 1.326 4.902 5.426 3.017 8.321C18.716 16.65 12 21 12 21z"/></svg>`;
 const CARET_DOWN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="${STACKED_ICON_SIZE}" height="${STACKED_ICON_SIZE}" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>`;
 
+const TRANSITION_MS = 450;
+const TRANSITION_EASE = d3.easeCubicInOut;
+
 export default function CleanStaticTreeCanvas({
   tree,
   collapsedNodeIds,
@@ -52,6 +55,16 @@ export default function CleanStaticTreeCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const gRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
+  const isFirstRenderRef = useRef(true);
+  const onToggleCollapseRef = useRef(onToggleCollapse);
+  const onSelectPersonRef = useRef(onSelectPerson);
+  const onClearSelectionRef = useRef(onClearSelection);
+  useEffect(() => {
+    onToggleCollapseRef.current = onToggleCollapse;
+    onSelectPersonRef.current = onSelectPerson;
+    onClearSelectionRef.current = onClearSelection;
+  });
   const [layout, setLayout] = useState<{
     nodes: LayoutNode[];
     spouseLines: { id: string; x1: number; y1: number; x2: number; y2: number; midX: number; midY: number; childStartX: number; childStartY: number; hasChildBranch: boolean }[];
@@ -69,7 +82,7 @@ export default function CleanStaticTreeCanvas({
     };
   }, [tree, collapsedNodeIds]);
 
-  const fitToView = useCallback(() => {
+  const fitToView = useCallback((animate = true) => {
     if (!svgRef.current || !containerRef.current || !layout?.nodes.length || !zoomRef.current) return;
     const svg = d3.select(svgRef.current);
     const g = svg.select<SVGGElement>('g.tree-root');
@@ -86,63 +99,40 @@ export default function CleanStaticTreeCanvas({
     const tx = width / 2 - scale * (bounds.x + bounds.width / 2);
     const ty = pad - scale * bounds.y;
 
-    svg
-      .transition()
-      .duration(500)
-      .call(zoomRef.current.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+    const transform = d3.zoomIdentity.translate(tx, ty).scale(scale);
+    if(animate) {
+      svg.transition().duration(TRANSITION_MS).ease(TRANSITION_EASE).call(zoomRef.current.transform, transform);
+    } else {
+      svg.call(zoomRef.current.transform, transform);
+    }
   }, [layout]);
 
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || !layout) return;
 
     const svg = d3.select(svgRef.current);
-    svg.selectAll('*').remove();
+    const isFirst = isFirstRenderRef.current;
+    
+    if(!gRef.current) {
+      svg.selectAll('*').remove();
+      const g = svg.append('g').attr('class', 'tree-root');
+      gRef.current = g;
 
-    const g = svg.append('g').attr('class', 'tree-root');
+      const zoom = d3
+      .zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.15, 2.5])
+      .on('zoom', (event) => {
+        gRef.current?.attr('transform', event.transform);
+      });
+
+      zoomRef.current = zoom;
+      svg.call(zoom).on('click', () => onClearSelection());
+    }
+
+    const g = gRef.current;
+
     const layoutNodeById = new Map(layout.nodes.map((node) => [node.id, node]));
-    const spouseJoinByNodeId = new Map<
-      string,
-      { midX: number; midY: number; childStartX: number; childStartY: number; toggleOwnerId: string; toggleTargetId: string; hasChildBranch: boolean }
-    >();
-    layout.spouseLines.forEach((line) => {
-      const [a, b] = line.id.split('::');
-      const nodeA = layoutNodeById.get(a);
-      const nodeB = layoutNodeById.get(b);
-      const bloodRelativeNode =
-        nodeA && !nodeA.person.node.isSpouse
-          ? nodeA
-          : nodeB && !nodeB.person.node.isSpouse
-            ? nodeB
-            : nodeA;
-      const wifeNode =
-        nodeA?.person.node.gender === 'F' ? nodeA : nodeB?.person.node.gender === 'F' ? nodeB : nodeA;
-      const toggleTargetNode =
-        nodeA?.person.hasChildren
-          ? nodeA
-          : nodeB?.person.hasChildren
-            ? nodeB
-            : bloodRelativeNode ?? wifeNode ?? nodeA;
-
-      spouseJoinByNodeId.set(a, {
-        midX: line.midX,
-        midY: line.midY,
-        childStartX: line.childStartX,
-        childStartY: line.childStartY,
-        toggleOwnerId: wifeNode?.id ?? bloodRelativeNode?.id ?? a,
-        toggleTargetId: toggleTargetNode?.id ?? a,
-        hasChildBranch: line.hasChildBranch,
-      });
-      spouseJoinByNodeId.set(b, {
-        midX: line.midX,
-        midY: line.midY,
-        childStartX: line.childStartX,
-        childStartY: line.childStartY,
-        toggleOwnerId: wifeNode?.id ?? bloodRelativeNode?.id ?? b,
-        toggleTargetId: toggleTargetNode?.id ?? b,
-        hasChildBranch: line.hasChildBranch,
-      });
-    });
-
+    
     const spouseLineControls = layout.spouseLines.flatMap((line) => {
       const [a, b] = line.id.split('::');
       const nodeA = layoutNodeById.get(a);
@@ -173,20 +163,44 @@ export default function CleanStaticTreeCanvas({
       ];
     });
 
-    g.selectAll('.child-link')
-      .data(layout.childLines)
-      .join('path')
+    // -- Child links --
+    const childLinkJoin = g
+      .selectAll<SVGPathElement, (typeof layout.childLines)[number]>('.child-link')
+      .data(layout.childLines, (d) => d.id);
+
+    childLinkJoin.exit()
+      .transition().duration(TRANSITION_MS).ease(TRANSITION_EASE)
+      .style('opacity', 0)
+      .remove();  
+
+    const childLinkEnter = childLinkJoin.enter()
+      .append('path')
       .attr('class', 'child-link')
       .attr('d', (d) => d.path)
       .attr('fill', 'none')
       .attr('stroke', '#a1a1aa')
       .attr('stroke-width', 1.75)
       .attr('stroke-linecap', 'round')
-      .attr('stroke-linejoin', 'round');
+      .attr('stroke-linejoin', 'round')
+      .style('opacity', isFirst ? 1 : 0);
 
-    g.selectAll('.spouse-link')
-      .data(layout.spouseLines)
-      .join('line')
+    if(!isFirst) {
+      childLinkEnter.transition().duration(TRANSITION_MS).ease(TRANSITION_EASE).style('opacity', 1);
+      childLinkJoin.transition().duration(TRANSITION_MS).ease(TRANSITION_EASE).attr('d', (d) => d.path);
+    }
+
+    // -- Spouse links --
+    const spouseLinkJoin = g
+      .selectAll<SVGLineElement, (typeof layout.spouseLines)[number]>('.spouse-link')
+      .data(layout.spouseLines, (d) => d.id);
+
+    spouseLinkJoin.exit()
+      .transition().duration(TRANSITION_MS).ease(TRANSITION_EASE)
+      .style('opacity', 0)
+      .remove();  
+
+    const spouseLinkEnter = spouseLinkJoin.enter()
+      .append('line')
       .attr('class', 'spouse-link')
       .attr('x1', (d) => d.x1)
       .attr('y1', (d) => d.y1)
@@ -194,15 +208,35 @@ export default function CleanStaticTreeCanvas({
       .attr('y2', (d) => d.y2)
       .attr('stroke', '#a1a1aa')
       .attr('stroke-width', 1.75)
-      .attr('stroke-linecap', 'round');
+      .attr('stroke-linecap', 'round')
+      .style('opacity', isFirst ? 1 : 0);
 
-    const unionHeart = g.selectAll('.union-heart')
-      .data(layout.spouseLines)
-      .join('g')
+    if(!isFirst) {
+      spouseLinkEnter.transition().duration(TRANSITION_MS).ease(TRANSITION_EASE).style('opacity', 1);
+      spouseLinkJoin.transition().duration(TRANSITION_MS).ease(TRANSITION_EASE)
+      .attr('x1', (d) => d.x1)
+      .attr('y1', (d) => d.y1)
+      .attr('x2', (d) => d.x2)
+      .attr('y2', (d) => d.y2);
+    }
+
+    // union heart
+    const heartJoin = g
+      .selectAll<SVGGElement, (typeof layout.spouseLines)[number]>('.union-heart')
+      .data(layout.spouseLines, (d) => d.id);
+    
+    heartJoin.exit()
+      .transition().duration(TRANSITION_MS).ease(TRANSITION_EASE)
+      .style('opacity', 0)
+      .remove();  
+
+    const heartEnter = heartJoin.enter()
+      .append('g')
       .attr('class', 'union-heart')
-      .attr('transform', (d) => `translate(${d.midX - HEART_ICON_SIZE / 2},${d.midY - HEART_ICON_SIZE / 2})`);
+      .attr('transform', (d) => `translate(${d.midX - HEART_ICON_SIZE / 2}, ${d.midY - HEART_ICON_SIZE / 2})`)
+      .style('opacity', isFirst ? 1 : 0);
 
-    unionHeart
+    heartEnter
       .append('foreignObject')
       .attr('width', HEART_ICON_SIZE)
       .attr('height', HEART_ICON_SIZE)
@@ -220,17 +254,32 @@ export default function CleanStaticTreeCanvas({
       .style('box-shadow', '0 1px 3px rgba(15, 23, 42, 0.15)')
       .html(HEART_SVG);
 
-    const unionWatch = g.selectAll('.union-watch')
-      .data(spouseLineControls)
-      .join('g')
+    if(!isFirst) {
+      heartEnter.transition().duration(TRANSITION_MS).ease(TRANSITION_EASE).style('opacity', 1);
+      heartJoin.transition().duration(TRANSITION_MS).ease(TRANSITION_EASE)
+        .attr('transform', (d) => `translate(${d.midX - HEART_ICON_SIZE / 2},${d.midY - HEART_ICON_SIZE / 2})`);
+    } 
+  
+    // --- Union caret controls ---
+    const watchJoin = g
+      .selectAll<SVGGElement, (typeof spouseLineControls)[number]>('.union-watch')
+      .data(spouseLineControls, (d) => d.id);
+    
+    watchJoin.exit()
+      .transition().duration(TRANSITION_MS).ease(TRANSITION_EASE)
+      .style('opacity', 0)
+      .remove(); 
+      
+    const watchEnter = watchJoin.enter()
+      .append('g')
       .attr('class', 'union-watch')
       .attr(
         'transform',
-        (d) =>
-          `translate(${d.midX - STACKED_ICON_SIZE / 2},${d.midY + HEART_ICON_SIZE / 2 + STACKED_ICON_GAP})`
-      );
+        (d) => `translate(${d.midX - STACKED_ICON_SIZE / 2},${d.midY + HEART_ICON_SIZE / 2 + STACKED_ICON_GAP})`
+      )
+      .style('opacity', isFirst ? 1 :0 );
 
-    unionWatch
+    watchEnter
       .append('foreignObject')
       .attr('width', STACKED_ICON_SIZE)
       .attr('height', STACKED_ICON_SIZE)
@@ -263,24 +312,48 @@ export default function CleanStaticTreeCanvas({
       })
       .on('click', (event: MouseEvent, d) => {
         event.stopPropagation();
-        onToggleCollapse(d.toggleTargetId);
+        onToggleCollapseRef.current(d.toggleTargetId);
       })
       .on('keydown', (event: KeyboardEvent, d) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
         event.preventDefault();
         event.stopPropagation();
-        onToggleCollapse(d.toggleTargetId);
+        onToggleCollapseRef.current(d.toggleTargetId);
       })
       .html(CARET_DOWN_SVG);
 
-    const nodeGroups = g
+    if(!isFirst) {
+      watchEnter.transition().duration(TRANSITION_MS).ease(TRANSITION_EASE).style('opacity', 1);
+      watchJoin.transition().duration(TRANSITION_MS).ease(TRANSITION_EASE)
+        .attr('transform', (d) => `translate(${d.midX - STACKED_ICON_SIZE / 2}, ${d.midY + HEART_ICON_SIZE / 2 + STACKED_ICON_GAP})`)   
+    } 
+    
+    // --- Person nodes ---
+    const nodeJoin = g
       .selectAll<SVGGElement, LayoutNode>('.person-node')
-      .data(layout.nodes, (d) => d.id)
-      .join('g')
-      .attr('class', 'person-node')
-      .attr('transform', (d) => `translate(${d.x},${d.y})`);
+      .data(layout.nodes, (d) => d.id);
 
-    nodeGroups.each(function (d) {
+    nodeJoin.exit()
+      .transition().duration(TRANSITION_MS).ease(TRANSITION_EASE)
+      .style('opacity', 0)
+      .remove();
+
+    if(!isFirst) {
+      nodeJoin.transition().duration(TRANSITION_MS).ease(TRANSITION_EASE)
+        .attr('transform', (d) => `translate(${d.x}, ${d.y})`);
+    }  
+
+    const nodeEnter = nodeJoin.enter()
+       .append('g')
+       .attr('class', 'person-node')
+       .attr('transform', (d) => `translate(${d.x}, ${d.y})`)
+       .style('opacity', isFirst ? 1 : 0);
+
+    if(!isFirst) {
+      nodeEnter.transition().duration(TRANSITION_MS).ease(TRANSITION_EASE).style('opacity', 1);
+    }
+       
+    nodeEnter.each(function (d) {
       const group = d3.select(this);
       const fo = group
         .append('foreignObject')
@@ -299,11 +372,10 @@ export default function CleanStaticTreeCanvas({
 
       const card = wrapper
         .append('xhtml:div')
+        .attr('data-node-id', d.id)
         .attr(
           'class',
-          `rounded-[10px] border-[2px] bg-white shadow-[0_8px_22px_rgba(148,163,184,0.16)] cursor-pointer ${hoverEffectClass(d.person.node.gender)} ${borderClass(d.person.node.gender)} ${
-            selectedPersonId === d.id ? 'ring-2 ring-indigo-400 ring-offset-2' : ''
-          }`
+          `person-card rounded-[10px] border-[2px] bg-white shadow-[0_8px_22px_rgba(148,163,184,0.16)] cursor-pointer ${hoverEffectClass(d.person.node.gender)} ${borderClass(d.person.node.gender)}`
         )
         .style('width', `${CARD_WIDTH}px`)
         .style('height', `${CARD_HEIGHT}px`)
@@ -311,7 +383,7 @@ export default function CleanStaticTreeCanvas({
         .style('position', 'relative')
         .on('click', (event: MouseEvent) => {
           event.stopPropagation();
-          onSelectPerson(d.id);
+          onSelectPersonRef.current(d.id);
         });
 
       const body = card
@@ -327,22 +399,30 @@ export default function CleanStaticTreeCanvas({
         .append('xhtml:div')
         .attr('class', 'mt-2 text-center text-[11px] capitalize text-slate-500')
         .text(genderLabel(d.person.node.gender));
-
-      
     });
 
-    const zoom = d3
-      .zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.15, 2.5])
-      .on('zoom', (event) => {
-        g.attr('transform', event.transform);
-      });
+    if(isFirst) {
+      fitToView(false);
+    } else {
+      fitToView(true);
+    }
 
-    zoomRef.current = zoom;
-    svg.call(zoom).on('click', () => onClearSelection());
+     isFirstRenderRef.current = false;
+  }, [layout, fitToView]);
 
-    requestAnimationFrame(() => fitToView());
-  }, [layout, selectedPersonId, onSelectPerson, onToggleCollapse, onClearSelection, fitToView]);
+  useEffect(() => {
+    if(!gRef.current) return;
+    const g = gRef.current;
+    g.selectAll<HTMLDivElement, unknown>('.person-card').each(function () {
+      const el = d3.select(this);
+      const nodeId = el.attr('data-node-id');
+      if(nodeId === selectedPersonId) {
+        el.classed('ring-2', true).classed('ring-indigo-400', true).classed('ring-offset-2', true);
+      } else {
+        el.classed('ring-2', false).classed('ring-indigo-400', false).classed('ring-offset-2', false);
+      }
+    })
+  }, [selectedPersonId])
 
   useEffect(() => {
     const onResize = () => fitToView();
