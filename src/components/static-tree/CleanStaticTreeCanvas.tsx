@@ -257,7 +257,7 @@ export default function CleanStaticTreeCanvas({
     if(!isFirst) {
       heartEnter.transition().duration(TRANSITION_MS).ease(TRANSITION_EASE).style('opacity', 1);
       heartJoin.transition().duration(TRANSITION_MS).ease(TRANSITION_EASE)
-        .attr('transform', (d) => `translate(${d.midX - HEART_ICON_SIZE / 2}, ${d.midY - HEART_ICON_SIZE / 2}`);
+        .attr('transform', (d) => `translate(${d.midX - HEART_ICON_SIZE / 2},${d.midY - HEART_ICON_SIZE / 2})`);
     } 
   
     // --- Union caret controls ---
