@@ -430,6 +430,18 @@ export default function CleanStaticTreeCanvas({
     return () => window.removeEventListener('resize', onResize);
   }, [fitToView]);
 
+  const handleZoomIn = useCallback(() => {
+    if(!svgRef.current || !zoomRef.current) return;
+    const svg = d3.select(svgRef.current);
+    svg.transition().duration(300).ease(TRANSITION_EASE).call(zoomRef.current.scaleBy, 1.4);
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    if(!svgRef.current || !zoomRef.current) return;
+    const svg = d3.select(svgRef.current);
+    svg.transition().duration(300).ease(TRANSITION_EASE).call(zoomRef.current.scaleBy, 1 / 1.4);
+  }, []);
+
   return (
     <div ref={containerRef} className="relative h-full w-full overflow-hidden bg-slate-50/80">
       <div className="pointer-events-none absolute left-0 right-0 top-3 z-10 flex justify-end px-4 md:px-6">
@@ -438,6 +450,26 @@ export default function CleanStaticTreeCanvas({
         </div>
       </div>
       <svg ref={svgRef} className="h-full w-full touch-none" />
+      <div className="absolute bottom-4 left-4 z-10 flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <button 
+          type="button" 
+          onClick={handleZoomIn} 
+          className="flex h-7 w-7 items-center justify-center border-b border-slate-200 text-slate-600 transition-colors hover:bg-slate-50" 
+          title="Zoom In" 
+          aria-label="Zoom In"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="10" height="10"><path d="M32 18.133H18.133V32h-4.266V18.133H0v-4.266h13.867V0h4.266v13.867H32z"></path></svg>
+        </button>
+        <button 
+         type="button" 
+         onClick={handleZoomOut} 
+         className="flex h-7 w-7 items-center justify-center border-b text-slate-600 transition-colors hover:bg-slate-50" 
+         title="Zoom Out" 
+         aria-label="Zoom Out"
+         >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 5"  width="10" height="10"><path d="M0 0h32v4.2H0z"></path></svg>
+        </button>
+      </div>
     </div>
   );
 }
