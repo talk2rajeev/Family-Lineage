@@ -463,7 +463,7 @@ export default function CleanStaticTreeCanvas({
         <button 
          type="button" 
          onClick={handleZoomOut} 
-         className="flex h-7 w-7 items-center justify-center border-b text-slate-600 transition-colors hover:bg-slate-50" 
+         className="flex h-7 w-7 items-center justify-center text-slate-600 transition-colors hover:bg-slate-50" 
          title="Zoom Out" 
          aria-label="Zoom Out"
          >
